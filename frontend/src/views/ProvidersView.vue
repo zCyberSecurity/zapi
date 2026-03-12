@@ -169,8 +169,8 @@ onMounted(loadProviders)
         <el-form-item label="上游 ID">
           <el-input v-model="modelForm.provider_model_id" placeholder="同上可留空" style="width:140px" />
         </el-form-item>
-        <el-form-item label="显示名">
-          <el-input v-model="modelForm.display_name" style="width:120px" />
+        <el-form-item label="别名">
+          <el-input v-model="modelForm.alias" style="width:120px" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="saveModel">{{ editingModel ? '保存' : '添加' }}</el-button>
@@ -181,7 +181,7 @@ onMounted(loadProviders)
       <el-table :data="models" border stripe size="small">
         <el-table-column prop="model_id" label="Model ID" />
         <el-table-column prop="provider_model_id" label="上游 ID" />
-        <el-table-column prop="display_name" label="显示名" />
+        <el-table-column prop="alias" label="别名" />
         <el-table-column label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="row.enabled ? 'success' : 'info'" size="small">{{ row.enabled ? '启用' : '禁用' }}</el-tag>

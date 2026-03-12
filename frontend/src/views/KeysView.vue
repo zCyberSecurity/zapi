@@ -71,6 +71,11 @@ function copyKey(key: string) {
   ElMessage.success('已复制')
 }
 
+function fmtDate(s: string): string {
+  if (!s) return ''
+  return s.replace('T', ' ').slice(0, 19)
+}
+
 function formatModels(raw: string): string {
   try {
     const arr = JSON.parse(raw || '[]')
@@ -93,10 +98,10 @@ onMounted(load)
     <el-table :data="keys" v-loading="loading" border stripe>
       <el-table-column prop="id" label="ID" width="60" />
       <el-table-column prop="name" label="名称" width="160" />
-      <el-table-column label="Key">
+      <el-table-column label="Key" min-width="320">
         <template #default="{ row }">
-          <el-text truncated style="max-width:300px">{{ row.key }}</el-text>
-          <el-button link size="small" @click="copyKey(row.key)" style="margin-left:8px">复制</el-button>
+          <span class="key-text">{{ row.key }}</span>
+          <el-button link size="small" @click="copyKey(row.key)" style="margin-left:8px;flex-shrink:0">复制</el-button>
         </template>
       </el-table-column>
       <el-table-column label="可用模型">
@@ -107,11 +112,15 @@ onMounted(load)
           <el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '禁用' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="created_at" label="创建时间" width="180" />
-      <el-table-column label="操作" width="130">
+      <el-table-column label="创建时间" width="160">
+        <template #default="{ row }">{{ fmtDate(row.created_at) }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="140" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" type="primary" @click="openEdit(row)">编辑</el-button>
-          <el-button size="small" type="danger" @click="remove(row.id)">删除</el-button>
+          <div style="white-space:nowrap">
+            <el-button size="small" type="primary" @click="openEdit(row)">编辑</el-button>
+            <el-button size="small" type="danger" @click="remove(row.id)">删除</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -147,5 +156,10 @@ onMounted(load)
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
+}
+.key-text {
+  font-family: monospace;
+  font-size: 13px;
+  word-break: break-all;
 }
 </style>

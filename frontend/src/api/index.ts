@@ -28,7 +28,7 @@ export interface ProviderModel {
   provider_id: number
   model_id: string
   provider_model_id: string
-  display_name: string
+  alias: string
   enabled: boolean
 }
 

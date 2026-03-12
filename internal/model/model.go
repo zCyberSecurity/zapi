@@ -30,7 +30,7 @@ type ProviderModel struct {
 	ModelID string `gorm:"not null" json:"model_id"`
 	// ProviderModelID is the actual model ID sent to the upstream (defaults to ModelID if empty).
 	ProviderModelID string         `json:"provider_model_id"`
-	DisplayName     string         `json:"display_name"`
+	Alias           string         `json:"alias"`
 	Enabled         bool           `gorm:"default:true" json:"enabled"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
