@@ -1,10 +1,12 @@
 package proxy
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -38,32 +40,58 @@ func (p *Proxy) FindProvider(modelID string) (*model.Provider, *model.ProviderMo
 	return &pm.Provider, &pm, nil
 }
 
-// ForwardStream sends body to the upstream OpenAI-compatible endpoint and streams the response into w.
-func (p *Proxy) ForwardStream(w http.ResponseWriter, origReq *http.Request, provider *model.Provider, path string, body []byte) error {
+// ForwardStream sends body to the upstream, streams the response into w,
+// and returns extracted token usage (prompt, completion, total).
+func (p *Proxy) ForwardStream(w http.ResponseWriter, origReq *http.Request, provider *model.Provider, path string, body []byte) (int, int, int, error) {
 	url := strings.TrimRight(provider.BaseURL, "/") + path
+	log.Printf("[DEBUG] ForwardStream upstream=%s provider=%s model=%s", url, provider.Name, ParseOpenAIRequest(body).Model)
 
 	req, err := http.NewRequestWithContext(origReq.Context(), http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return err
+		return 0, 0, 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+provider.APIKey)
 
 	resp, err := p.client.Do(req)
 	if err != nil {
-		return err
+		return 0, 0, 0, err
 	}
 	defer resp.Body.Close()
 
 	copyHeaders(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
-	return nil
+
+	flusher, canFlush := w.(http.Flusher)
+	var prompt, completion, total int
+
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 64*1024), 64*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Fprintf(w, "%s\n", line)
+		if canFlush {
+			flusher.Flush()
+		}
+		if strings.HasPrefix(line, "data: ") {
+			data := strings.TrimPrefix(line, "data: ")
+			if data == "[DONE]" {
+				continue
+			}
+			p, c, t := ExtractOpenAIUsage([]byte(data))
+			if t > 0 {
+				prompt, completion, total = p, c, t
+			}
+		}
+	}
+
+	return prompt, completion, total, scanner.Err()
 }
 
 // ForwardBuffered sends body to the upstream and returns the full response body.
 func (p *Proxy) ForwardBuffered(origReq *http.Request, provider *model.Provider, path string, body []byte) (int, []byte, error) {
 	url := strings.TrimRight(provider.BaseURL, "/") + path
+	log.Printf("[DEBUG] ForwardBuffered upstream=%s provider=%s model=%s", url, provider.Name, ParseOpenAIRequest(body).Model)
 
 	req, err := http.NewRequestWithContext(origReq.Context(), http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
@@ -125,6 +153,20 @@ func ReplaceModel(body []byte, newModel string) []byte {
 	}
 	b, _ := json.Marshal(newModel)
 	m["model"] = b
+	out, err := json.Marshal(m)
+	if err != nil {
+		return body
+	}
+	return out
+}
+
+// InjectStreamOptions adds stream_options.include_usage=true so providers return usage in the last SSE chunk.
+func InjectStreamOptions(body []byte) []byte {
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(body, &m); err != nil {
+		return body
+	}
+	m["stream_options"] = json.RawMessage(`{"include_usage":true}`)
 	out, err := json.Marshal(m)
 	if err != nil {
 		return body

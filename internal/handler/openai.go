@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"errors"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -50,7 +52,12 @@ func (h *OpenAIHandler) ChatCompletions(c *gin.Context) {
 	upstreamBody := proxy.ReplaceModel(body, pm.UpstreamModelID())
 
 	if req.Stream {
-		h.proxy.ForwardStream(c.Writer, c.Request, provider, "/chat/completions", upstreamBody)
+		streamBody := proxy.InjectStreamOptions(upstreamBody)
+		prompt, completion, total, _ := h.proxy.ForwardStream(c.Writer, c.Request, provider, "/chat/completions", streamBody)
+		log.Printf("[DEBUG] stream usage model=%s prompt=%d completion=%d total=%d", req.Model, prompt, completion, total)
+		if total > 0 {
+			h.recordUsage(apiKey, req.Model, prompt, completion, total)
+		}
 		return
 	}
 
@@ -62,6 +69,7 @@ func (h *OpenAIHandler) ChatCompletions(c *gin.Context) {
 
 	if status == http.StatusOK {
 		prompt, completion, total := proxy.ExtractOpenAIUsage(respBody)
+		log.Printf("[DEBUG] usage model=%s prompt=%d completion=%d total=%d", req.Model, prompt, completion, total)
 		if total > 0 {
 			h.recordUsage(apiKey, req.Model, prompt, completion, total)
 		}
@@ -105,19 +113,27 @@ func (h *OpenAIHandler) recordUsage(apiKey *model.APIKey, modelID string, prompt
 	date := time.Now().Format("2006-01-02")
 	var usage model.UsageLog
 	err := h.db.Where("api_key_id = ? AND model = ? AND date = ?", apiKey.ID, modelID, date).First(&usage).Error
-	if err != nil {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		usage = model.UsageLog{
 			APIKeyID:   apiKey.ID,
 			APIKeyName: apiKey.Name,
 			Model:      modelID,
 			Date:       date,
 		}
-		h.db.Create(&usage)
+		if err := h.db.Create(&usage).Error; err != nil {
+			log.Printf("[ERROR] recordUsage create: %v", err)
+			return
+		}
+	} else if err != nil {
+		log.Printf("[ERROR] recordUsage query: %v", err)
+		return
 	}
-	h.db.Model(&usage).Updates(map[string]interface{}{
+	if err := h.db.Model(&usage).Updates(map[string]interface{}{
 		"prompt_tokens":     usage.PromptTokens + prompt,
 		"completion_tokens": usage.CompletionTokens + completion,
 		"total_tokens":      usage.TotalTokens + total,
 		"request_count":     usage.RequestCount + 1,
-	})
+	}).Error; err != nil {
+		log.Printf("[ERROR] recordUsage update: %v", err)
+	}
 }

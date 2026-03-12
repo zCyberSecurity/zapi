@@ -55,7 +55,7 @@ func (h *AnthropicHandler) CreateMessage(c *gin.Context) {
 	if provider.APIType == "anthropic" {
 		upstreamBody := proxy.ReplaceModel(body, pm.UpstreamModelID())
 		if areq.Stream {
-			h.proxy.ForwardStream(c.Writer, c.Request, provider, "/messages", upstreamBody)
+			h.proxy.ForwardStream(c.Writer, c.Request, provider, "/messages", upstreamBody) //nolint
 			return
 		}
 		status, respBody, err := h.proxy.ForwardBuffered(c.Request, provider, "/messages", upstreamBody)
@@ -84,9 +84,11 @@ func (h *AnthropicHandler) CreateMessage(c *gin.Context) {
 	oaiBody = proxy.ReplaceModel(oaiBody, pm.UpstreamModelID())
 
 	if areq.Stream {
-		// Streaming: forward raw SSE; client must handle OpenAI SSE format.
-		// TODO: convert SSE chunks to Anthropic format.
-		h.proxy.ForwardStream(c.Writer, c.Request, provider, "/chat/completions", oaiBody)
+		streamBody := proxy.InjectStreamOptions(oaiBody)
+		prompt, completion, total, _ := h.proxy.ForwardStream(c.Writer, c.Request, provider, "/chat/completions", streamBody)
+		if total > 0 {
+			h.recordUsage(apiKey, areq.Model, prompt, completion, total)
+		}
 		return
 	}
 

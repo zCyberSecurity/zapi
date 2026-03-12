@@ -7,6 +7,19 @@ const keys = ref<APIKey[]>([])
 const loading = ref(false)
 const dialog = ref(false)
 const editingId = ref<number | null>(null)
+const visibleKeys = ref<Set<number>>(new Set())
+
+function toggleKeyVisible(id: number) {
+  if (visibleKeys.value.has(id)) {
+    visibleKeys.value.delete(id)
+  } else {
+    visibleKeys.value.add(id)
+  }
+}
+
+function maskKey(key: string) {
+  return key.slice(0, 10) + '•'.repeat(key.length - 14) + key.slice(-4)
+}
 
 const form = ref<{
   name: string
@@ -100,8 +113,11 @@ onMounted(load)
       <el-table-column prop="name" label="名称" width="160" />
       <el-table-column label="Key" min-width="320">
         <template #default="{ row }">
-          <span class="key-text">{{ row.key }}</span>
-          <el-button link size="small" @click="copyKey(row.key)" style="margin-left:8px;flex-shrink:0">复制</el-button>
+          <span class="key-text">{{ visibleKeys.has(row.id) ? row.key : maskKey(row.key) }}</span>
+          <el-button link size="small" @click="toggleKeyVisible(row.id)" style="margin-left:8px;flex-shrink:0">
+            <el-icon><View v-if="!visibleKeys.has(row.id)" /><Hide v-else /></el-icon>
+          </el-button>
+          <el-button link size="small" @click="copyKey(row.key)" style="flex-shrink:0">复制</el-button>
         </template>
       </el-table-column>
       <el-table-column label="可用模型">

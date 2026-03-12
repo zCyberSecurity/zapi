@@ -32,6 +32,10 @@ function logout() {
           <el-icon><DataLine /></el-icon>
           <span>Usage</span>
         </el-menu-item>
+        <el-menu-item index="/test">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>Test</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 

@@ -46,8 +46,8 @@ onMounted(async () => {
         />
       </el-form-item>
       <el-form-item label="API Key">
-        <el-select v-model="filter.key_id" clearable placeholder="全部">
-          <el-option v-for="k in keys" :key="k.id" :label="k.name || k.key" :value="k.id" />
+        <el-select v-model="filter.key_id" clearable placeholder="全部" style="width:300px">
+          <el-option v-for="k in keys" :key="k.id" :label="`${k.name}(${k.key.slice(0, 20)}...)`" :value="k.id" />
         </el-select>
       </el-form-item>
       <el-form-item>
