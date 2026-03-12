@@ -85,6 +85,7 @@ func (h *OpenAIHandler) ListModels(c *gin.Context) {
 	h.db.Preload("Provider").
 		Joins("JOIN providers ON providers.id = provider_models.provider_id AND providers.enabled = true AND providers.deleted_at IS NULL").
 		Where("provider_models.enabled = ? AND provider_models.deleted_at IS NULL", true).
+		Order("provider_models.model_id ASC").
 		Find(&pms)
 
 	type modelObj struct {

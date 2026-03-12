@@ -1,0 +1,23 @@
+services:
+  backend:
+    build: .
+    restart: unless-stopped
+    environment:
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-change-me}
+      - DB_PATH=/data/zapi.db
+      - ADDR=:8080
+    volumes:
+      - zapi-data:/data
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-80}:80"
+    depends_on:
+      - backend
+
+volumes:
+  zapi-data:

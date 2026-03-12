@@ -34,7 +34,66 @@ AI API 聚合网关，将多个 LLM 提供商聚合为统一的 OpenAI / Anthrop
 | 后端 | Go 1.24、Gin、GORM + SQLite |
 | 前端 | Vue 3 + TypeScript、Element Plus、Vite |
 
-## 快速开始
+## 部署（Docker）
+
+### 前置条件
+
+- Docker 20.10+
+- Docker Compose v2
+
+### 步骤
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/zCyberSecurity/zapi.git
+cd zapi
+
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑 .env，至少修改 ADMIN_TOKEN
+vi .env
+
+# 3. 构建并启动
+docker compose up -d --build
+
+# 4. 查看运行状态
+docker compose ps
+docker compose logs -f
+```
+
+启动后访问 `http://服务器IP`，使用 `.env` 中设置的 `ADMIN_TOKEN` 登录管理后台。
+
+### 环境变量（.env）
+
+```env
+ADMIN_TOKEN=your-secret-token   # 管理后台登录凭证（必改）
+PORT=80                         # 对外暴露端口，默认 80
+```
+
+### 数据持久化
+
+数据库存储在 Docker volume `zapi-data` 中，容器重启不丢失。
+
+```bash
+# 备份数据库
+docker compose cp backend:/data/zapi.db ./zapi.db.bak
+```
+
+### 常用命令
+
+```bash
+# 停止
+docker compose down
+
+# 重启
+docker compose restart
+
+# 更新部署
+git pull
+docker compose up -d --build
+```
+
+## 本地开发
 
 ### 后端
 

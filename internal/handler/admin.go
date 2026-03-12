@@ -6,11 +6,25 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zCyberSecurity/zapi/internal/model"
 	"gorm.io/gorm"
 )
+
+func stripProvider(p *model.Provider) {
+	p.Name = strings.TrimSpace(p.Name)
+	p.BaseURL = strings.TrimSpace(strings.TrimRight(p.BaseURL, "/"))
+	p.APIKey = strings.TrimSpace(p.APIKey)
+	p.APIType = strings.TrimSpace(p.APIType)
+}
+
+func stripProviderModel(pm *model.ProviderModel) {
+	pm.ModelID = strings.TrimSpace(pm.ModelID)
+	pm.ProviderModelID = strings.TrimSpace(pm.ProviderModelID)
+	pm.Alias = strings.TrimSpace(pm.Alias)
+}
 
 type AdminHandler struct {
 	db *gorm.DB
@@ -34,6 +48,7 @@ func (h *AdminHandler) CreateProvider(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, errResp(err.Error()))
 		return
 	}
+	stripProvider(&p)
 	if err := h.db.Create(&p).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, errResp(err.Error()))
 		return
@@ -51,6 +66,7 @@ func (h *AdminHandler) UpdateProvider(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, errResp(err.Error()))
 		return
 	}
+	stripProvider(&p)
 	h.db.Save(&p)
 	c.JSON(http.StatusOK, p)
 }
@@ -83,6 +99,7 @@ func (h *AdminHandler) AddModel(c *gin.Context) {
 		return
 	}
 	pm.ProviderID = uint(providerID)
+	stripProviderModel(&pm)
 	if err := h.db.Create(&pm).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, errResp(err.Error()))
 		return
@@ -100,6 +117,7 @@ func (h *AdminHandler) UpdateModel(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, errResp(err.Error()))
 		return
 	}
+	stripProviderModel(&pm)
 	h.db.Save(&pm)
 	c.JSON(http.StatusOK, pm)
 }

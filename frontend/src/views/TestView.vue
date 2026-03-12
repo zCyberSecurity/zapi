@@ -76,10 +76,11 @@ async function send() {
         body,
       })
 
+      const streamMsg = messages.value[idx]!
       if (!resp.ok) {
         const err = await resp.text()
-        messages.value[idx].content = err
-        messages.value[idx].error = true
+        streamMsg.content = err
+        streamMsg.error = true
         return
       }
 
@@ -101,7 +102,7 @@ async function send() {
             const chunk = JSON.parse(data)
             const delta = chunk.choices?.[0]?.delta?.content
             if (delta) {
-              messages.value[idx].content += delta
+              streamMsg.content += delta
               scrollToBottom()
             }
           } catch {}
@@ -117,17 +118,19 @@ async function send() {
         body,
       })
       const data = await resp.json()
+      const msg = messages.value[idx]!
       if (!resp.ok) {
-        messages.value[idx].content = JSON.stringify(data, null, 2)
-        messages.value[idx].error = true
+        msg.content = JSON.stringify(data, null, 2)
+        msg.error = true
       } else {
-        messages.value[idx].content = data.choices?.[0]?.message?.content ?? JSON.stringify(data, null, 2)
+        msg.content = data.choices?.[0]?.message?.content ?? JSON.stringify(data, null, 2)
       }
       scrollToBottom()
     }
   } catch (e: any) {
-    messages.value[idx].content = e.message
-    messages.value[idx].error = true
+    const msg = messages.value[idx]!
+    msg.content = e.message
+    msg.error = true
   } finally {
     loading.value = false
     scrollToBottom()
